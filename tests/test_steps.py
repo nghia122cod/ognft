@@ -130,3 +130,25 @@ class FullFlow(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DetectTest(unittest.TestCase):
+    def test_tim_tren_desktop(self):
+        from video_auto import detect
+        with tempfile.TemporaryDirectory() as d:
+            home = Path(d)
+            dk = home / "Desktop"
+            dk.mkdir()
+            for name in ("Dg Elevenlabs - Lối tắt.lnk", "CapCut.lnk", "GHEP-ANH-TIMELINE.bat",
+                         "Mo_Tool - Lối tắt.lnk", "Zalo.lnk"):
+                (dk / name).write_bytes(b"")
+            (dk / "Voice").mkdir()
+            with mock.patch.object(Path, "home", lambda: home), mock.patch.dict("os.environ", {}, clear=True):
+                p = load_project(home / "video1")
+                detect.ap_dung(p, log=lambda *_: None)
+            p = load_project(home / "video1")
+            self.assertTrue(p.cfg["apps"]["voice_app"].endswith("Dg Elevenlabs - Lối tắt.lnk"))
+            self.assertTrue(p.cfg["apps"]["capcut"].endswith("CapCut.lnk"))
+            self.assertTrue(p.cfg["apps"]["ghep_anh_bat"].endswith("GHEP-ANH-TIMELINE.bat"))
+            self.assertEqual(p.voice_dir, dk / "Voice")
+            self.assertEqual(p.kich_ban, dk / "Voice" / "kich-ban.txt")

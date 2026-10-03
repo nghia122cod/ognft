@@ -8,11 +8,13 @@ DEFAULTS = {
     "width": 1920,
     "height": 1080,
     "downloads": "",                    # thư mục trình duyệt tải file về; để trống = ~/Downloads
+    "thu_muc_voice": "",                # thư mục Voice dùng chung (vd Desktop/Voice); để trống = <video>/voice
     "apps": {
         "claude": "https://claude.ai/new",
         "gemini": "https://gemini.google.com/app",
-        "voice_app": "",                # đường dẫn app giọng đọc trên máy, vd C:/Program Files/.../App.exe
-        "capcut": "",                   # vd C:/Users/<ban>/AppData/Local/CapCut/Apps/CapCut.exe
+        "voice_app": "",                # app giọng đọc (lối tắt ElevenLabs trên Desktop) — lệnh tim-app tự điền
+        "capcut": "",                   # lối tắt CapCut — lệnh tim-app tự điền
+        "ghep_anh_bat": "",             # GHEP-ANH-TIMELINE.bat gốc — lệnh tim-app tự điền
     },
     "giong_doc": {                      # chỉ để hiện nhắc thông số khi mở app giọng đọc
         "giong": "Nhật Phong",
@@ -38,7 +40,7 @@ DEFAULTS = {
 # Tên file cố định trong thư mục dự án
 F_PROMPT = "prompt-anh.txt"
 D_VOICE = "voice"
-F_KICH_BAN = "voice/kich-ban.txt"
+F_KICH_BAN_TEN = "kich-ban.txt"
 D_ANH = "anh"
 F_TIMELINE = "timeline.txt"
 F_VIDEO_ANH = "anh/video-anh.mp4"
@@ -65,15 +67,30 @@ class Project:
         d = self.cfg.get("downloads")
         return Path(d).expanduser() if d else Path.home() / "Downloads"
 
-    def voice_audio(self):
-        d = self.p(D_VOICE)
-        files = [f for f in d.glob("*") if f.suffix.lower() in AUDIO_EXT] if d.exists() else []
+    @property
+    def voice_dir(self) -> Path:
+        d = self.cfg.get("thu_muc_voice")
+        return Path(d).expanduser() if d else self.p(D_VOICE)
+
+    @property
+    def kich_ban(self) -> Path:
+        return self.voice_dir / F_KICH_BAN_TEN
+
+    def _newest_voice(self, exts):
+        """File mới nhất trong thư mục voice, và phải mới hơn kịch bản của video này
+        (thư mục Voice dùng chung nhiều video nên bỏ qua file của video cũ)."""
+        d = self.voice_dir
+        if not d.exists():
+            return None
+        since = self.kich_ban.stat().st_mtime - 1 if self.kich_ban.exists() else 0
+        files = [f for f in d.iterdir() if f.is_file() and f.suffix.lower() in exts and f.stat().st_mtime >= since]
         return max(files, key=lambda f: f.stat().st_mtime) if files else None
 
+    def voice_audio(self):
+        return self._newest_voice(AUDIO_EXT)
+
     def srt(self):
-        d = self.p(D_VOICE)
-        files = list(d.glob("*.srt")) if d.exists() else []
-        return max(files, key=lambda f: f.stat().st_mtime) if files else None
+        return self._newest_voice({".srt"})
 
     def save(self):
         (self.root / "config.json").write_text(json.dumps(self.cfg, ensure_ascii=False, indent=2), encoding="utf-8")

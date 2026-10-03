@@ -7,6 +7,7 @@ from tkinter import filedialog, messagebox, scrolledtext, simpledialog, ttk
 
 from .apps import launch
 from .config import load_project
+from .detect import ap_dung
 from .steps import STEPS, UI, run_all
 
 
@@ -116,6 +117,8 @@ def main(project_dir="."):
     ttk.Entry(top, textvariable=proj, width=70, state="readonly").pack(side="left", padx=6)
     ttk.Button(top, text="Mở...", command=chon).pack(side="left")
     ttk.Button(top, text="Video mới", command=moi).pack(side="left", padx=4)
+    ttk.Button(top, text="Tìm app trên máy", command=lambda: run_bg(
+        lambda p: ap_dung(p, ui.log), "Tìm app trên máy")).pack(side="left", padx=4)
     ttk.Button(top, text="Sửa config", command=lambda: (st["p"].save() if not (st["p"].root / "config.json").exists() else None,
                                                      launch(str(st["p"].root / "config.json"), ui.log))
                ).pack(side="left")
@@ -151,4 +154,7 @@ def main(project_dir="."):
     logbox.pack(fill="both", expand=True, padx=8, pady=(0, 8))
     refresh()
     pump()
+    a = st["p"].cfg["apps"]
+    if not (a.get("voice_app") and a.get("capcut") and st["p"].cfg.get("thu_muc_voice")):
+        run_bg(lambda p: ap_dung(p, ui.log), "Tìm app trên máy")   # lần đầu: tự dò đường dẫn app
     root.mainloop()

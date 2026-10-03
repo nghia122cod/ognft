@@ -15,7 +15,7 @@ from typing import Callable
 
 from . import ghep_anh, sfx, timeline_vi
 from .apps import launch, open_folder
-from .config import (AUDIO_EXT, D_ANH, D_VOICE, F_KICH_BAN, F_PROMPT, F_TIMELINE, F_VIDEO_ANH, Project)
+from .config import AUDIO_EXT, D_ANH, F_PROMPT, F_TIMELINE, F_VIDEO_ANH, Project
 from .watch import match, newest, wait_for
 
 IMG_EXT = {"." + e for e in ghep_anh.EXTS}
@@ -84,7 +84,7 @@ def nhan_file_kich_ban(p: Project, ui: UI, since=0.0):
         _copy(pr, p.p(F_PROMPT), ui)
         got["prompt"] = pr
     if kb:
-        _copy(kb, p.p(F_KICH_BAN), ui)
+        _copy(kb, p.kich_ban, ui)
         got["kich_ban"] = kb
     for pat in m["phu"]:
         f = newest(dl, [pat], since)
@@ -94,7 +94,7 @@ def nhan_file_kich_ban(p: Project, ui: UI, since=0.0):
 
 
 def b1_done(p):
-    return p.p(F_PROMPT).exists() and p.p(F_KICH_BAN).exists()
+    return p.p(F_PROMPT).exists() and p.kich_ban.exists()
 
 
 def b1_auto(p, ui):
@@ -105,9 +105,9 @@ def b1_auto(p, ui):
 
         def check():
             nhan_file_kich_ban(p, ui, start)
-            return p.p(F_KICH_BAN) if b1_done(p) else None
+            return p.kich_ban if b1_done(p) else None
         wait_for(check, _wait_s(p), ui.log, f"Đang chờ file prompt ảnh + kịch bản trong {p.downloads} ...", ui.stop)
-    ui.log(f"✔ Kịch bản: {p.p(F_KICH_BAN).name} | Prompt ảnh: {so_prompt(p)} ảnh")
+    ui.log(f"✔ Kịch bản: {p.kich_ban.name} | Prompt ảnh: {so_prompt(p)} ảnh")
 
 
 # ---------- Bước 2: ảnh ----------
@@ -159,22 +159,22 @@ def b3_done(p):
 
 
 def b3_auto(p, ui):
-    if not p.p(F_KICH_BAN).exists():
-        raise RuntimeError("Chưa có voice/kich-ban.txt (bước 1).")
+    if not p.kich_ban.exists():
+        raise RuntimeError("Chưa có kich-ban.txt trong thư mục Voice (bước 1).")
     if not b3_done(p):
-        start = _mtime(p.p(F_KICH_BAN))
+        start = _mtime(p.kich_ban)
         _try_launch(p.cfg["apps"]["voice_app"], ui, "app giọng đọc")
-        open_folder(p.p(D_VOICE), ui.log)
+        open_folder(p.voice_dir, ui.log)
         g = p.cfg["giong_doc"]
         ui.log(f"Trong app giọng đọc: giọng {g['giong']}, speed {g['speed']}, stability {g['stability']}, "
-               f"similarity {g['similarity']} → nạp voice/kich-ban.txt → tạo → lưu vào thư mục voice/.")
+               f"similarity {g['similarity']} → nạp kich-ban.txt trong thư mục Voice → tạo → lưu vào thư mục Voice.")
 
         def check():
             f = newest(p.downloads, ["*" + e for e in AUDIO_EXT], start)
             if f and not b3_done(p):
-                _copy(f, p.p(D_VOICE) / f.name, ui)
+                _copy(f, p.voice_dir / f.name, ui)
             return p.voice_audio()
-        wait_for(check, _wait_s(p), ui.log, "Đang chờ file giọng đọc trong voice/ ...", ui.stop)
+        wait_for(check, _wait_s(p), ui.log, "Đang chờ file giọng đọc trong thư mục Voice ...", ui.stop)
     ui.log(f"✔ Giọng đọc: {p.voice_audio().name}")
 
 
@@ -189,20 +189,20 @@ def b4_auto(p, ui):
     if not b4_done(p):
         start = _mtime(p.voice_audio())     # SRT phải mới hơn file giọng đọc
         _try_launch(p.cfg["apps"]["capcut"], ui, "CapCut")
-        open_folder(p.p(D_VOICE), ui.log)
+        open_folder(p.voice_dir, ui.log)
         ui.log(HD_CAPCUT_SRT)
 
         def check():
             f = newest(p.downloads, ["*.srt"], start)
             if f and not b4_done(p):
-                _copy(f, p.p(D_VOICE) / f.name, ui)
+                _copy(f, p.voice_dir / f.name, ui)
             return p.srt()
-        wait_for(check, _wait_s(p), ui.log, "Đang chờ file .srt trong voice/ ...", ui.stop)
+        wait_for(check, _wait_s(p), ui.log, "Đang chờ file .srt trong thư mục Voice ...", ui.stop)
     ui.log(f"✔ Phụ đề: {p.srt().name}")
 
 
-HD_CAPCUT_SRT = ("CapCut máy tính: Dự án mới → thêm file giọng đọc trong voice/ → Văn bản → Phụ đề tự động → "
-                 "chọn ngôn ngữ → Tạo → Xuất → bỏ tích Video → tích Phụ đề → định dạng SRT → lưu vào voice/.")
+HD_CAPCUT_SRT = ("CapCut máy tính: Dự án mới → thêm file giọng đọc trong thư mục Voice → Văn bản → Phụ đề tự động → "
+                 "chọn ngôn ngữ → Tạo → Xuất → bỏ tích Video → tích Phụ đề → định dạng SRT → lưu vào thư mục Voice.")
 
 
 # ---------- Bước 5: timeline ----------
@@ -235,14 +235,14 @@ def timeline_tu_dong(p, ui):
         return
     bando = p.root / "bando.txt"
     if bando.exists():
-        n, tong, _ = timeline_vi.build(p.p(F_KICH_BAN), srt, p.root, ban_do_path=bando, fps=fps, min_giay=mn)
+        n, tong, _ = timeline_vi.build(p.kich_ban, srt, p.root, ban_do_path=bando, fps=fps, min_giay=mn)
         ui.log(f"Chế độ bản đồ (bando.txt): {n} ảnh.")
     else:
         n_anh = len(anh_list(p)) or so_prompt(p)
         ui.log("⚠ Không có bando.txt. Theo skill ghép giọng đọc: ảnh đã có sẵn thì nên dùng chế độ bản đồ "
                "(đối chiếu từng ảnh với câu) — việc đó cần Claude AI. Đang dùng chế độ ép đúng số ảnh, "
                "hãy soi lại timeline-bang.md.")
-        n, tong, thieu = timeline_vi.build(p.p(F_KICH_BAN), srt, p.root, so_anh=n_anh, fps=fps, min_giay=mn)
+        n, tong, thieu = timeline_vi.build(p.kich_ban, srt, p.root, so_anh=n_anh, fps=fps, min_giay=mn)
         if thieu:
             ui.log(f"Cảnh báo: {thieu} cảnh không neo được trực tiếp vào SRT, đã nội suy.")
     ui.log(f"Ghi timeline.txt + timeline-bang.md: {n} ảnh, {tong // fps // 60} phút {tong // fps % 60} giây.")
@@ -258,7 +258,7 @@ def b5_auto(p, ui):
             start = _mtime(p.srt())         # timeline phải mới hơn file SRT
             launch(p.cfg["apps"]["claude"], ui.log)
             open_folder(p.root, ui.log)
-            ui.log(f"Trên Claude AI: tải lên voice/{p.srt().name} + {F_KICH_BAN} + {F_PROMPT} → chạy skill "
+            ui.log(f"Trên Claude AI: tải lên {p.srt().name} + {p.kich_ban.name} (trong {p.voice_dir}) + {F_PROMPT} → chạy skill "
                    "ghép giọng đọc → tải timeline.txt về.")
 
             def check():
@@ -339,7 +339,7 @@ def b7_auto(p, ui):
     _try_launch(p.cfg["apps"]["capcut"], ui, "CapCut")
     open_folder(p.root, ui.log)
     extra = " + sfx-track.wav" if (p.root / "sfx-track.wav").exists() else ""
-    ui.log(f"CapCut: thêm voice/{p.voice_audio().name} + anh/video-anh.mp4{extra} → đặt sound effect theo "
+    ui.log(f"CapCut: thêm {p.voice_audio().name} + anh/video-anh.mp4{extra} → đặt sound effect theo "
            "sound-effects-capcut.md → xuất video.")
     if ui.confirm("Đã xuất video trong CapCut xong chưa?"):
         (p.root / ".da-xuat").write_text(time.strftime("%Y-%m-%d %H:%M"), encoding="utf-8")
@@ -353,7 +353,7 @@ def _hd(text):
 STEPS = [
     Step("kich_ban", "1. Tạo kịch bản (skill Claude AI)",
          _hd("Bấm skill tạo kịch bản → tải file prompt ảnh + kịch bản giọng đọc. App tự lấy từ Downloads: "
-             "prompt → prompt-anh.txt, kịch bản → voice/kich-ban.txt."),
+             "prompt → prompt-anh.txt, kịch bản → kich-ban.txt trong thư mục Voice."),
          b1_done, b1_auto,
          [("Mở Claude AI", lambda p, ui: launch(p.cfg["apps"]["claude"], ui.log)),
           ("Lấy file từ Downloads", lambda p, ui: nhan_file_kich_ban(p, ui))]),
@@ -366,13 +366,13 @@ STEPS = [
     Step("giong", "3. Tạo giọng đọc (app trên máy)",
          lambda p: (f"Mở app giọng đọc → giọng {p.cfg['giong_doc']['giong']}, speed {p.cfg['giong_doc']['speed']}, "
                     f"stability {p.cfg['giong_doc']['stability']}, similarity {p.cfg['giong_doc']['similarity']} → "
-                    "nạp voice/kich-ban.txt → tạo → lưu vào voice/."),
+                    "nạp kich-ban.txt trong thư mục Voice → tạo → lưu vào thư mục Voice."),
          b3_done, b3_auto,
          [("Mở app giọng đọc", lambda p, ui: _try_launch(p.cfg["apps"]["voice_app"], ui, "app giọng đọc")),
-          ("Mở thư mục voice", lambda p, ui: open_folder(p.p(D_VOICE), ui.log))]),
+          ("Mở thư mục Voice", lambda p, ui: open_folder(p.voice_dir, ui.log))]),
     Step("srt", "4. Phụ đề CapCut → SRT", _hd(HD_CAPCUT_SRT), b4_done, b4_auto,
          [("Mở CapCut", lambda p, ui: _try_launch(p.cfg["apps"]["capcut"], ui, "CapCut")),
-          ("Mở thư mục voice", lambda p, ui: open_folder(p.p(D_VOICE), ui.log))]),
+          ("Mở thư mục Voice", lambda p, ui: open_folder(p.voice_dir, ui.log))]),
     Step("timeline", "5. Timeline (skill ghép giọng đọc)",
          lambda p: ("Claude AI: tải lên SRT + kịch bản + prompt ảnh → chạy skill ghép giọng đọc → tải timeline.txt."
                     if p.cfg["timeline"]["che_do"] == "claude_ai" else
@@ -383,7 +383,8 @@ STEPS = [
     Step("ghep", "6. Ghép ảnh theo timeline",
          _hd("Kiểm tra ảnh (đuôi, số đầu tên, số lượng) → xem ảnh đầu/cuối → ghép thành anh/video-anh.mp4."),
          b6_done, b6_auto,
-         [("Kiểm tra ảnh", b6_kiem_tra), ("Sửa ảnh", b6_sua)]),
+         [("Kiểm tra ảnh", b6_kiem_tra), ("Sửa ảnh", b6_sua),
+          ("Mở GHEP-ANH (.bat gốc)", lambda p, ui: _try_launch(p.cfg["apps"]["ghep_anh_bat"], ui, "GHEP-ANH-TIMELINE.bat"))]),
     Step("capcut", "7. CapCut: giọng + video + sound effect → xuất",
          _hd("Thêm giọng đọc + video-anh.mp4 vào CapCut, đặt sound effect theo sound-effects-capcut.md, xuất video."),
          b7_done, b7_auto,

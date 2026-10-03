@@ -12,7 +12,10 @@ description: Chạy quy trình làm video 7 bước của người dùng bằng 
 - Việc gì ngoài yêu cầu: hỏi trước.
 
 ## Cách chạy
-1. Hỏi tên/thư mục video nếu chưa rõ. Video mới: `python -m video_auto init -p <thư mục>`.
+0. **Mỗi lần bật skill, chạy trước:** `python -m video_auto tim-app -p <thư mục>`. Lệnh chỉ đọc Desktop/Start Menu để
+   lấy đường dẫn: lối tắt ElevenLabs (app giọng đọc), CapCut, `GHEP-ANH-TIMELINE.bat`, thư mục `Voice` trên Desktop,
+   rồi ghi vào config.json (không ghi đè ô đã điền). Báo cho người dùng mục nào "KHÔNG tìm thấy".
+1. Hỏi tên/thư mục video nếu chưa rõ. Video mới: `python -m video_auto init -p <thư mục>` (tự chạy tim-app).
 2. Xem đang ở bước nào: `python -m video_auto status -p <thư mục>`.
 3. Mở giao diện cho người dùng bấm (cách chính): `python -m video_auto gui -p <thư mục>` (chạy nền).
    Hoặc chạy tự động không giao diện, trong nền (các bước làm tay sẽ chờ file tới 4 giờ):

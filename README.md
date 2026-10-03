@@ -16,7 +16,8 @@ thư mục, file cần dùng, hiện hướng dẫn, rồi **tự chờ file k�
 ## Cài đặt (Windows)
 1. Python 3.10+ (tích "Add to PATH") và FFmpeg: `winget install Gyan.FFmpeg`.
 2. Không cần cài thêm thư viện.
-3. Bấm đúp `RUN.bat`, bấm **Video mới**, bấm **Sửa config** để điền đường dẫn app giọng đọc và CapCut.
+3. Bấm đúp `RUN.bat`, bấm **Video mới**. Lần đầu app tự dò trên Desktop: lối tắt ElevenLabs, CapCut,
+   `GHEP-ANH-TIMELINE.bat` và thư mục `Voice` (bấm **Tìm app trên máy** để dò lại). Thiếu gì thì **Sửa config**.
 
 ## Lệnh
 ```
@@ -24,7 +25,7 @@ python -m video_auto gui    -p videos\ten-video
 python -m video_auto status -p videos\ten-video
 python -m video_auto run    -p videos\ten-video [--tu 3]
 python -m video_auto kich_ban|anh|giong|srt|timeline|ghep|capcut -p ...
-python -m video_auto kiem-tra-anh | sua-anh | liet-ke -p ...
+python -m video_auto kiem-tra-anh | sua-anh | liet-ke | tim-app -p ...
 ```
 
 ## Khác bản .bat cũ
