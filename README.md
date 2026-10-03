@@ -16,7 +16,7 @@ thư mục, file cần dùng, hiện hướng dẫn, rồi **tự chờ file k�
 ## Cài đặt (Windows)
 1. Python 3.10+ (tích "Add to PATH") và FFmpeg: `winget install Gyan.FFmpeg`.
 2. Không cần cài thêm thư viện.
-3. Bấm đúp `RUN.bat`, bấm **Video mới**. Lần đầu app tự dò trên Desktop: lối tắt ElevenLabs, CapCut,
+3. Bấm đúp `MO-VIDEO-AUTO.bat` (tự cập nhật bản mới rồi mở app), bấm **Video mới**. Lần đầu app tự dò trên Desktop: lối tắt ElevenLabs, CapCut,
    `GHEP-ANH-TIMELINE.bat` và thư mục `Voice` (bấm **Tìm app trên máy** để dò lại). Thiếu gì thì **Sửa config**.
 
 ## Lệnh
