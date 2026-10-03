@@ -84,9 +84,9 @@ class Project:
         """File mới nhất trong thư mục voice, và phải mới hơn kịch bản của video này
         (thư mục Voice dùng chung nhiều video nên bỏ qua file của video cũ)."""
         d = self.voice_dir
-        if not d.exists():
-            return None
-        since = self.kich_ban.stat().st_mtime - 1 if self.kich_ban.exists() else 0
+        if not d.exists() or not self.kich_ban.exists():
+            return None                 # chưa có kịch bản của video này thì chưa tính giọng/SRT nào
+        since = self.kich_ban.stat().st_mtime - 1
         files = [f for f in d.iterdir() if f.is_file() and f.suffix.lower() in exts and f.stat().st_mtime >= since]
         return max(files, key=lambda f: f.stat().st_mtime) if files else None
 

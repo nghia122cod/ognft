@@ -398,7 +398,7 @@ STEPS = [
          b6_done, b6_auto,
          [("Kiểm tra ảnh", b6_kiem_tra), ("Sửa ảnh", b6_sua),
           ("Mở GHEP-ANH (.bat gốc)", lambda p, ui: _try_launch(p.cfg["apps"]["ghep_anh_bat"], ui, "GHEP-ANH-TIMELINE.bat"))]),
-    Step("capcut", "7. CapCut: giọng + video + sound effect → xuất",
+    Step("capcut", "7. CapCut: thêm SFX → xuất video",
          _hd("Thêm giọng đọc + video-anh.mp4 vào CapCut, đặt sound effect theo sound-effects-capcut.md, xuất video."),
          b7_done, b7_auto,
          [("Làm danh sách SFX", b7_sfx),

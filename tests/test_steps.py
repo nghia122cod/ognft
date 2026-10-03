@@ -156,3 +156,23 @@ class DetectTest(unittest.TestCase):
             self.assertNotIn("ghep_anh_tool", p.cfg["apps"])
             self.assertEqual(p.voice_dir, dk / "Voice")
             self.assertEqual(Path(p.cfg["thu_muc_anh_tai_ve"]), home / "Pictures" / "nghe ne anh")
+
+
+class VoiceDungChungTest(unittest.TestCase):
+    def test_bo_qua_file_video_cu(self):
+        """Thư mục Voice dùng chung: file giọng/SRT của video cũ không được tính là xong."""
+        with tempfile.TemporaryDirectory() as d:
+            voice = Path(d) / "Voice"
+            voice.mkdir()
+            (voice / "video-cu.mp3").write_bytes(b"x")
+            (voice / "video-cu.srt").write_text("1", encoding="utf-8")
+            p = load_project(Path(d) / "v")
+            p.cfg["thu_muc_voice"] = str(voice)
+            self.assertIsNone(p.voice_audio())
+            self.assertIsNone(p.srt())
+            time.sleep(1.1)
+            p.kich_ban.write_text("kịch bản mới", encoding="utf-8")
+            self.assertIsNone(p.voice_audio())        # file cũ hơn kịch bản mới
+            time.sleep(1.1)
+            (voice / "giong-moi.mp3").write_bytes(b"x")
+            self.assertEqual(p.voice_audio().name, "giong-moi.mp3")
