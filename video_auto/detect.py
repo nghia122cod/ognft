@@ -12,12 +12,10 @@ TIM = {
     "voice_app": ["*eleven*.lnk", "*eleven*.exe", "*eleven*.url"],
     "capcut": ["capcut.lnk", "capcut*.lnk", "capcut*.exe"],
     "ghep_anh_bat": ["ghep-anh-timeline*.bat", "ghep-anh*.bat", "ghep_anh*.bat", "ghep*anh*.bat", "ghep-anh*.lnk"],
-    # Mo_Tool_Giong_Doc.bat: công cụ ghép ảnh thành video theo frame (KHÔNG phải app giọng đọc)
-    "ghep_anh_tool": ["mo_tool_giong_doc*"],
 }
-# Không thuộc quy trình (người dùng xác nhận): CHAY-MINI-CAPCUT.bat, xuong-timeline
+# Không thuộc quy trình (người dùng xác nhận): bản thử nghiệm Mo_Tool_Giong_Doc, CHAY-MINI-CAPCUT, xuong-timeline
 BO_QUA = {
-    "chay-mini-capcut*", "xuong-timeline*",
+    "mo_tool_giong_doc*", "chay-mini-capcut*", "xuong-timeline*",
 }
 TEN_THU_MUC_ANH = ("nghe ne anh", "nghé nè ảnh", "nghe-ne-anh", "nghene anh")
 
@@ -118,8 +116,7 @@ def ap_dung(project, log=print):
     """Điền những đường dẫn tìm được vào config.json (không ghi đè ô người dùng đã tự điền)."""
     found = tim_app()
     ten = {"voice_app": "App giọng đọc (ElevenLabs)", "capcut": "CapCut",
-           "ghep_anh_bat": "GHEP-ANH-TIMELINE.bat", "ghep_anh_tool": "Mo_Tool_Giong_Doc (ghép ảnh theo frame)",
-           "thu_muc_voice": "Thư mục Voice",
+           "ghep_anh_bat": "GHEP-ANH-TIMELINE.bat", "thu_muc_voice": "Thư mục Voice",
            "thu_muc_anh_tai_ve": "Thư mục ảnh Nghé nè"}
     o_goc = ("thu_muc_voice", "thu_muc_anh_tai_ve")       # khoá nằm ở gốc config, không trong apps
     changed = False
