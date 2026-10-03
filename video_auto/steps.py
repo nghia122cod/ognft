@@ -17,6 +17,7 @@ from . import ghep_anh, sfx, timeline_vi
 from .apps import launch, open_folder
 from .config import AUDIO_EXT, D_ANH, F_PROMPT, F_TIMELINE, F_VIDEO_ANH, Project
 from .watch import match, newest, wait_for
+from .winauto import tu_dang_nhap
 
 IMG_EXT = {"." + e for e in ghep_anh.EXTS}
 
@@ -57,6 +58,13 @@ def _copy(src: Path, dst: Path, ui):
 
 def _mtime(f):
     return f.stat().st_mtime - 1 if f and f.exists() else time.time()
+
+
+def mo_app_giong(p, ui):
+    """Mở app giọng đọc rồi tự bấm Đăng nhập."""
+    _try_launch(p.cfg["apps"]["voice_app"], ui, "app giọng đọc")
+    if p.cfg["apps"]["voice_app"]:
+        tu_dang_nhap(p.cfg["giong_doc"], ui.log)
 
 
 def _try_launch(target, ui, ten):
@@ -175,7 +183,7 @@ def b3_auto(p, ui):
         raise RuntimeError("Chưa có kich-ban.txt trong thư mục Voice (bước 1).")
     if not b3_done(p):
         start = _mtime(p.kich_ban)
-        _try_launch(p.cfg["apps"]["voice_app"], ui, "app giọng đọc")
+        mo_app_giong(p, ui)
         open_folder(p.voice_dir, ui.log)
         g = p.cfg["giong_doc"]
         ui.log(f"Trong app giọng đọc: giọng {g['giong']}, speed {g['speed']}, stability {g['stability']}, "
@@ -381,7 +389,7 @@ STEPS = [
                     f"stability {p.cfg['giong_doc']['stability']}, similarity {p.cfg['giong_doc']['similarity']} → "
                     "nạp kich-ban.txt trong thư mục Voice → tạo → lưu vào thư mục Voice."),
          b3_done, b3_auto,
-         [("Mở app giọng đọc", lambda p, ui: _try_launch(p.cfg["apps"]["voice_app"], ui, "app giọng đọc")),
+         [("Mở app giọng đọc", mo_app_giong),
           ("Mở thư mục Voice", lambda p, ui: open_folder(p.voice_dir, ui.log))]),
     Step("srt", "4. Phụ đề CapCut → SRT", _hd(HD_CAPCUT_SRT), b4_done, b4_auto,
          [("Mở CapCut", lambda p, ui: _try_launch(p.cfg["apps"]["capcut"], ui, "CapCut")),

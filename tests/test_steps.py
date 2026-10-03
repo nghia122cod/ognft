@@ -176,3 +176,11 @@ class VoiceDungChungTest(unittest.TestCase):
             time.sleep(1.1)
             (voice / "giong-moi.mp3").write_bytes(b"x")
             self.assertEqual(p.voice_audio().name, "giong-moi.mp3")
+
+
+class WinAutoTest(unittest.TestCase):
+    def test_khong_phai_windows_thi_bo_qua(self):
+        from video_auto import winauto
+        with mock.patch.object(winauto.sys, "platform", "linux"):
+            self.assertFalse(winauto.tu_dang_nhap({"tu_dang_nhap": True}, log=lambda *_: None))
+        self.assertFalse(winauto.tu_dang_nhap({"tu_dang_nhap": False}, log=lambda *_: None))

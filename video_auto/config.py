@@ -22,6 +22,9 @@ DEFAULTS = {
         "speed": "0.95",
         "stability": "40%",
         "similarity": "35%",
+        "tu_dang_nhap": True,           # tự bấm ĐĂNG NHẬP (app đã "Nhớ tài khoản"; không lưu mật khẩu ở đây)
+        "tieu_de_dang_nhap": "Đăng Nhập DGT ElevenLabs",
+        "nut_dang_nhap": [0.276, 0.835],  # vị trí nút ĐĂNG NHẬP theo tỉ lệ cửa sổ (ngang, dọc)
     },
     "timeline": {
         "che_do": "claude_ai",          # claude_ai = chạy skill ghép giọng đọc trên Claude AI như cũ
