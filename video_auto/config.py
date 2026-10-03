@@ -16,6 +16,7 @@ DEFAULTS = {
         "voice_app": "",                # app giọng đọc (lối tắt ElevenLabs trên Desktop) — lệnh tim-app tự điền
         "capcut": "",                   # lối tắt CapCut — lệnh tim-app tự điền
         "ghep_anh_bat": "",             # GHEP-ANH-TIMELINE.bat gốc — lệnh tim-app tự điền
+        "ghep_anh_tool": "",            # Mo_Tool_Giong_Doc.bat: tool ghép ảnh theo frame — tim-app tự điền
     },
     "giong_doc": {                      # chỉ để hiện nhắc thông số khi mở app giọng đọc
         "giong": "Nhật Phong",

@@ -153,5 +153,6 @@ class DetectTest(unittest.TestCase):
             self.assertTrue(p.cfg["apps"]["voice_app"].endswith("Dgt_ElevenlabsVP.exe - Lối tắt.lnk"))
             self.assertTrue(p.cfg["apps"]["capcut"].endswith("CapCut.lnk"))
             self.assertTrue(p.cfg["apps"]["ghep_anh_bat"].endswith("GHEP-ANH-TIMELINE.bat4.bat"))
+            self.assertTrue(p.cfg["apps"]["ghep_anh_tool"].endswith("Mo_Tool_Giong_Doc.bat - Lối tắt.lnk"))
             self.assertEqual(p.voice_dir, dk / "Voice")
             self.assertEqual(Path(p.cfg["thu_muc_anh_tai_ve"]), home / "Pictures" / "nghe ne anh")
