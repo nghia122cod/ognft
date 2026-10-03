@@ -15,7 +15,7 @@ def main(argv=None):
         except (AttributeError, ValueError):
             pass
     ap = argparse.ArgumentParser(prog="video_auto", description="Quy trình làm video 7 bước")
-    ap.add_argument("command", choices=["gui", "init", "status", "run", *KEYS, "kiem-tra-anh", "sua-anh", "liet-ke", "tim-app"])
+    ap.add_argument("command", choices=["gui", "init", "status", "run", *KEYS, "kiem-tra-anh", "sua-anh", "liet-ke", "tim-app", "thu-dang-nhap"])
     ap.add_argument("--project", "-p", default=".", help="Thư mục dự án (1 video = 1 thư mục)")
     ap.add_argument("--tu", type=int, default=1, help="run: bắt đầu từ bước số mấy")
     a = ap.parse_args(argv)
@@ -34,6 +34,9 @@ def main(argv=None):
             print(f"Đã tạo dự án {p.root}")
             print("Tìm app trên máy:")
             ap_dung(p)
+        elif a.command == "thu-dang-nhap":
+            from .steps import mo_app_giong_chan_doan
+            mo_app_giong_chan_doan(p, ui)
         elif a.command == "tim-app":
             ap_dung(p)
         elif a.command == "status":

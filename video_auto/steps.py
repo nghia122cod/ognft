@@ -67,6 +67,13 @@ def mo_app_giong(p, ui):
         tu_dang_nhap(p.cfg["giong_doc"], ui.log)
 
 
+def mo_app_giong_chan_doan(p, ui):
+    """Như mo_app_giong nhưng in chi tiết + chụp màn hình chỗ định bấm (lệnh thu-dang-nhap)."""
+    _try_launch(p.cfg["apps"]["voice_app"], ui, "app giọng đọc")
+    p.root.mkdir(parents=True, exist_ok=True)
+    tu_dang_nhap(p.cfg["giong_doc"], ui.log, chan_doan=p.root)
+
+
 def _try_launch(target, ui, ten):
     if target:
         launch(target, ui.log)
