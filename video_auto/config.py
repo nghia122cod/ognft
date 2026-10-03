@@ -9,6 +9,7 @@ DEFAULTS = {
     "height": 1080,
     "downloads": "",                    # thư mục trình duyệt tải file về; để trống = ~/Downloads
     "thu_muc_voice": "",                # thư mục Voice dùng chung (vd Desktop/Voice); để trống = <video>/voice
+    "thu_muc_anh_tai_ve": "",           # nơi extension Nghé nè lưu ảnh (vd "nghe ne anh"); app chép ảnh mới sang anh/
     "apps": {
         "claude": "https://claude.ai/new",
         "gemini": "https://gemini.google.com/app",
@@ -65,7 +66,10 @@ class Project:
     @property
     def downloads(self) -> Path:
         d = self.cfg.get("downloads")
-        return Path(d).expanduser() if d else Path.home() / "Downloads"
+        if d:
+            return Path(d).expanduser()
+        from .winpaths import known_folder
+        return known_folder("Downloads") or Path.home() / "Downloads"
 
     @property
     def voice_dir(self) -> Path:

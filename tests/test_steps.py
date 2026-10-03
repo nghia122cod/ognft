@@ -134,21 +134,24 @@ if __name__ == "__main__":
 
 class DetectTest(unittest.TestCase):
     def test_tim_tren_desktop(self):
+        """Đúng tên file trên Desktop thật của người dùng (OneDrive\\Máy tính)."""
         from video_auto import detect
         with tempfile.TemporaryDirectory() as d:
             home = Path(d)
-            dk = home / "Desktop"
-            dk.mkdir()
-            for name in ("Dg Elevenlabs - Lối tắt.lnk", "CapCut.lnk", "GHEP-ANH-TIMELINE.bat",
-                         "Mo_Tool - Lối tắt.lnk", "Zalo.lnk"):
+            dk = home / "OneDrive" / "Máy tính"
+            dk.mkdir(parents=True)
+            for name in ("Mo_Tool_Giong_Doc.bat - Lối tắt.lnk", "Dgt_ElevenlabsVP.exe - Lối tắt.lnk", "CapCut.lnk",
+                         "GHEP-ANH-TIMELINE.bat4.bat", "CHAY-MINI-CAPCUT.bat", "xuong-timeline - Lối tắt.lnk",
+                         "Zalo.lnk"):
                 (dk / name).write_bytes(b"")
             (dk / "Voice").mkdir()
+            (home / "Pictures" / "nghe ne anh").mkdir(parents=True)
             with mock.patch.object(Path, "home", lambda: home), mock.patch.dict("os.environ", {}, clear=True):
                 p = load_project(home / "video1")
                 detect.ap_dung(p, log=lambda *_: None)
             p = load_project(home / "video1")
-            self.assertTrue(p.cfg["apps"]["voice_app"].endswith("Dg Elevenlabs - Lối tắt.lnk"))
+            self.assertTrue(p.cfg["apps"]["voice_app"].endswith("Dgt_ElevenlabsVP.exe - Lối tắt.lnk"))
             self.assertTrue(p.cfg["apps"]["capcut"].endswith("CapCut.lnk"))
-            self.assertTrue(p.cfg["apps"]["ghep_anh_bat"].endswith("GHEP-ANH-TIMELINE.bat"))
+            self.assertTrue(p.cfg["apps"]["ghep_anh_bat"].endswith("GHEP-ANH-TIMELINE.bat4.bat"))
             self.assertEqual(p.voice_dir, dk / "Voice")
-            self.assertEqual(p.kich_ban, dk / "Voice" / "kich-ban.txt")
+            self.assertEqual(Path(p.cfg["thu_muc_anh_tai_ve"]), home / "Pictures" / "nghe ne anh")

@@ -9,6 +9,11 @@ KEYS = [s.key for s in STEPS]
 
 
 def main(argv=None):
+    for stream in (sys.stdout, sys.stderr):      # PowerShell/cmd: in tiếng Việt không bị lỗi mã hoá
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
     ap = argparse.ArgumentParser(prog="video_auto", description="Quy trình làm video 7 bước")
     ap.add_argument("command", choices=["gui", "init", "status", "run", *KEYS, "kiem-tra-anh", "sua-anh", "liet-ke", "tim-app"])
     ap.add_argument("--project", "-p", default=".", help="Thư mục dự án (1 video = 1 thư mục)")

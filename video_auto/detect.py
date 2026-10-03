@@ -8,16 +8,20 @@ import os
 from pathlib import Path
 
 TIM = {
-    "voice_app": ["*eleven*.lnk", "*eleven*.exe", "*eleven*.url"],
-    "capcut": ["capcut*.lnk", "capcut*.exe"],
-    "ghep_anh_bat": ["ghep-anh*.bat", "ghep_anh*.bat", "ghep-anh*.lnk", "ghep*anh*.bat"],
+    # ưu tiên đúng thứ người dùng khoanh: Dgt_ElevenlabsVP.exe - Lối tắt
+    "voice_app": ["*eleven*.lnk", "*eleven*.exe", "*eleven*.url", "mo_tool_giong_doc*"],
+    "capcut": ["capcut.lnk", "capcut*.lnk", "capcut*.exe"],
+    "ghep_anh_bat": ["ghep-anh-timeline*.bat", "ghep-anh*.bat", "ghep_anh*.bat", "ghep*anh*.bat", "ghep-anh*.lnk"],
 }
+TEN_THU_MUC_ANH = ("nghe ne anh", "nghé nè ảnh", "nghe-ne-anh", "nghene anh")
 
 
 def desktops():
     env = os.environ
     home = Path.home()
-    cands = [home / "Desktop", home / "OneDrive" / "Desktop", home / "OneDrive" / "Màn hình nền"]
+    from .winpaths import known_folder
+    cands = [known_folder("Desktop"), home / "Desktop", home / "OneDrive" / "Desktop",
+             home / "OneDrive" / "Máy tính", home / "OneDrive" / "Màn hình nền", home / "OneDrive" / "Bàn làm việc"]
     for k in ("OneDrive", "OneDriveConsumer", "OneDriveCommercial"):
         if env.get(k):
             cands.append(Path(env[k]) / "Desktop")
@@ -25,7 +29,7 @@ def desktops():
         cands.append(Path(env["PUBLIC"]) / "Desktop")
     seen, out = set(), []
     for c in cands:
-        if c.is_dir() and c.resolve() not in seen:
+        if c and c.is_dir() and c.resolve() not in seen:
             seen.add(c.resolve())
             out.append(c)
     return out
@@ -39,14 +43,17 @@ def _start_menu():
 
 
 def _find(folders, patterns, deep=False):
+    """Mẫu đứng trước được ưu tiên (vd lối tắt ElevenLabs trước Mo_Tool_Giong_Doc)."""
+    files = []
     for d in folders:
-        it = d.rglob("*") if deep else d.iterdir()
         try:
-            for f in it:
-                if f.is_file() and any(fnmatch.fnmatch(f.name.lower(), p) for p in patterns):
-                    return f
+            files += [f for f in (d.rglob("*") if deep else d.iterdir()) if f.is_file()]
         except OSError:
             continue
+    for pat in patterns:
+        for f in files:
+            if fnmatch.fnmatch(f.name.lower(), pat):
+                return f
     return None
 
 
@@ -67,22 +74,55 @@ def tim_app():
         if v:
             found["thu_muc_voice"] = str(v)
             break
+    anh = _tim_thu_muc_anh(dk)
+    if anh:
+        found["thu_muc_anh_tai_ve"] = str(anh)
     return found
+
+
+def _tim_thu_muc_anh(dk):
+    """Thư mục ảnh của extension Nghé nè ("nghe ne anh"), tìm sâu 2 cấp ở các chỗ hay dùng."""
+    from .winpaths import known_folder
+    home = Path.home()
+    roots = dk + [known_folder("Downloads"), known_folder("Pictures"), known_folder("Documents"),
+                  home, home / "Downloads", home / "OneDrive", home / "Pictures"]
+    seen = set()
+    for r in roots:
+        if not r or not r.is_dir() or r.resolve() in seen:
+            continue
+        seen.add(r.resolve())
+        try:
+            for a in r.iterdir():
+                if not a.is_dir() or a.name.startswith("."):
+                    continue
+                if a.name.lower() in TEN_THU_MUC_ANH:
+                    return a
+                try:
+                    for b in a.iterdir():
+                        if b.is_dir() and b.name.lower() in TEN_THU_MUC_ANH:
+                            return b
+                except OSError:
+                    continue
+        except OSError:
+            continue
+    return None
 
 
 def ap_dung(project, log=print):
     """Điền những đường dẫn tìm được vào config.json (không ghi đè ô người dùng đã tự điền)."""
     found = tim_app()
     ten = {"voice_app": "App giọng đọc (ElevenLabs)", "capcut": "CapCut",
-           "ghep_anh_bat": "GHEP-ANH-TIMELINE.bat", "thu_muc_voice": "Thư mục Voice"}
+           "ghep_anh_bat": "GHEP-ANH-TIMELINE.bat", "thu_muc_voice": "Thư mục Voice",
+           "thu_muc_anh_tai_ve": "Thư mục ảnh Nghé nè"}
+    o_goc = ("thu_muc_voice", "thu_muc_anh_tai_ve")       # khoá nằm ở gốc config, không trong apps
     changed = False
     for key, label in ten.items():
-        cur = project.cfg.get(key) if key == "thu_muc_voice" else project.cfg["apps"].get(key)
+        cur = project.cfg.get(key) if key in o_goc else project.cfg["apps"].get(key)
         val = found.get(key)
         if cur:
             log(f"  {label}: {cur} (đã có trong config)")
         elif val:
-            if key == "thu_muc_voice":
+            if key in o_goc:
                 project.cfg[key] = val
             else:
                 project.cfg["apps"][key] = val

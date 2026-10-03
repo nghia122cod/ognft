@@ -121,17 +121,29 @@ def b2_done(p):
     return n > 0 and len(anh_list(p)) >= n
 
 
+def nguon_anh(p):
+    """Nơi extension lưu ảnh: thư mục Nghé nè (nếu có) và Downloads."""
+    out = []
+    if p.cfg.get("thu_muc_anh_tai_ve"):
+        out.append(Path(p.cfg["thu_muc_anh_tai_ve"]).expanduser())
+    out.append(p.downloads)
+    return [d for d in out if d.exists()]
+
+
 def chep_anh_downloads(p, ui, since):
+    """Chép (không di chuyển) ảnh mới tạo sau file prompt sang anh/ của video này."""
     dst = p.p(D_ANH)
     dst.mkdir(exist_ok=True)
     have = {f.name for f in anh_list(p)}
-    n = 0
-    for f in p.downloads.iterdir() if p.downloads.exists() else []:
-        if f.is_file() and f.suffix.lower() in IMG_EXT and f.stat().st_mtime >= since and f.name not in have:
-            shutil.copy2(f, dst / f.name)
-            n += 1
-    if n:
-        ui.log(f"  Chép {n} ảnh mới từ Downloads vào anh/")
+    for src_dir in nguon_anh(p):
+        n = 0
+        for f in src_dir.iterdir():
+            if f.is_file() and f.suffix.lower() in IMG_EXT and f.stat().st_mtime >= since and f.name not in have:
+                shutil.copy2(f, dst / f.name)
+                have.add(f.name)
+                n += 1
+        if n:
+            ui.log(f"  Chép {n} ảnh mới từ {src_dir.name} vào anh/")
 
 
 def b2_auto(p, ui):
@@ -361,6 +373,7 @@ STEPS = [
          lambda p: f"Mở Gemini → extension Nghé nè → nạp {F_PROMPT} ({so_prompt(p)} prompt) → tạo ảnh → lưu vào anh/.",
          b2_done, b2_auto,
          [("Mở Gemini", lambda p, ui: launch(p.cfg["apps"]["gemini"], ui.log)),
+          ("Lấy ảnh Nghé nè", lambda p, ui: chep_anh_downloads(p, ui, _mtime(p.p(F_PROMPT)))),
           ("Mở thư mục dự án", lambda p, ui: open_folder(p.root, ui.log)),
           ("Mở thư mục ảnh", lambda p, ui: open_folder(p.p(D_ANH), ui.log))]),
     Step("giong", "3. Tạo giọng đọc (app trên máy)",
