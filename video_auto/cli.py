@@ -2,34 +2,47 @@ import argparse
 import sys
 
 from .config import load_project
-from .pipeline import STEPS, run_all, step_open_capcut
+from .steps import STEPS, UI, run_all
 
-NAMES = {k: fn for k, _, fn in STEPS}
+KEYS = [s.key for s in STEPS]
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog="video_auto")
-    ap.add_argument("command", choices=["run", "gui", "init", "capcut", *NAMES])
-    ap.add_argument("--project", "-p", default=".", help="Thư mục dự án")
+    ap = argparse.ArgumentParser(prog="video_auto", description="Quy trình làm video 7 bước")
+    ap.add_argument("command", choices=["gui", "init", "status", "run", *KEYS, "kiem-tra-anh", "sua-anh", "liet-ke"])
+    ap.add_argument("--project", "-p", default=".", help="Thư mục dự án (1 video = 1 thư mục)")
+    ap.add_argument("--tu", type=int, default=1, help="run: bắt đầu từ bước số mấy")
     a = ap.parse_args(argv)
     if a.command == "gui":
         from .gui import main as gui_main
         return gui_main(a.project)
-    project = load_project(a.project)
+    p = load_project(a.project)
+    ui = UI()
     try:
         if a.command == "init":
-            project.root.mkdir(parents=True, exist_ok=True)
-            project.save()
-            (project.root / "images").mkdir(exist_ok=True)
-            (project.root / "voice").mkdir(exist_ok=True)
-            print(f"Đã tạo config.json trong {project.root}")
+            p.root.mkdir(parents=True, exist_ok=True)
+            if not (p.root / "config.json").exists():
+                p.save()
+            for d in ("voice", "anh"):
+                (p.root / d).mkdir(exist_ok=True)
+            print(f"Đã tạo dự án {p.root}")
+        elif a.command == "status":
+            for s in STEPS:
+                print(("✔ " if s.done(p) else "○ ") + s.title)
         elif a.command == "run":
-            run_all(project)
-        elif a.command == "capcut":
-            step_open_capcut(project)
+            run_all(p, ui, a.tu - 1)
+        elif a.command == "liet-ke":
+            from .config import F_KICH_BAN
+            from .timeline_vi import liet_ke
+            for i, c in enumerate(liet_ke(p.p(F_KICH_BAN)), 1):
+                print(f"{i}\t{c}")
+        elif a.command == "kiem-tra-anh":
+            next(s for s in STEPS if s.key == "ghep").buttons[0][1](p, ui)
+        elif a.command == "sua-anh":
+            next(s for s in STEPS if s.key == "ghep").buttons[1][1](p, ui)
         else:
-            NAMES[a.command](project)
-    except Exception as e:  # báo lỗi rõ cho người dùng, không in traceback dài
+            next(s for s in STEPS if s.key == a.command).auto(p, ui)
+    except (Exception, KeyboardInterrupt) as e:
         print(f"LỖI: {e}", file=sys.stderr)
         return 1
     return 0

@@ -1,85 +1,86 @@
-"""Cấu hình dự án. Mọi đường dẫn được đọc từ config.json trong thư mục dự án."""
+"""Cấu hình. Mỗi video là 1 thư mục dự án có config.json (tạo bằng lệnh init)."""
 import json
 from pathlib import Path
 
 DEFAULTS = {
-    "language": "vi",                      # vi | ja | en ...
-    "voice": {
-        "mode": "edge",                    # edge = tạo bằng edge-tts | external = mở app giọng đọc, chờ file
-        "name": "vi-VN-HoaiMyNeural",      # ja: ja-JP-NanamiNeural, en: en-US-AriaNeural
-        "rate": "+0%",                     # tốc độ, vd "-10%"
-        "pitch": "+0Hz",
-        "volume": "+0%",
-        "external_wait_seconds": 1800,     # chờ tối đa khi dùng app giọng đọc ngoài
+    "kenh": "vi",                       # vi = Người Xưa Sống Sao (căn theo từ) | ja = kênh tâm lý Nhật (căn theo ký tự)
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "downloads": "",                    # thư mục trình duyệt tải file về; để trống = ~/Downloads
+    "apps": {
+        "claude": "https://claude.ai/new",
+        "gemini": "https://gemini.google.com/app",
+        "voice_app": "",                # đường dẫn app giọng đọc trên máy, vd C:/Program Files/.../App.exe
+        "capcut": "",                   # vd C:/Users/<ban>/AppData/Local/CapCut/Apps/CapCut.exe
     },
-    "stt": {
-        "model": "small",                  # tiny/base/small/medium/large-v3
-        "device": "auto",
-        "compute_type": "auto",
+    "giong_doc": {                      # chỉ để hiện nhắc thông số khi mở app giọng đọc
+        "giong": "Nhật Phong",
+        "speed": "0.95",
+        "stability": "40%",
+        "similarity": "35%",
     },
-    "video": {
-        "width": 1920,
-        "height": 1080,
-        "fps": 30,
-        "ken_burns": True,
-        "burn_subtitles": False,
-        "subtitle_max_chars": 28,
-        "subtitle_font_size": 18,
-        "music_volume": 0.12,
-        "sfx_volume": 0.8,
+    "timeline": {
+        "che_do": "claude_ai",          # claude_ai = chạy skill ghép giọng đọc trên Claude AI như cũ
+                                        # tu_dong   = chạy cùng thuật toán của skill ngay trên máy (offline)
+        "toi_thieu_giay": 1.0,
     },
-    "apps": {                              # để trống nếu không dùng
-        "capcut": "",
-        "voice_app": "",
-        "browser_url_images": "https://gemini.google.com/app",
+    "mau_file": {                       # tên file skill kịch bản xuất ra (nhận từ Downloads)
+        "prompt_anh": ["prompt-anh*.txt", "prompt*anh*.txt", "*prompt*.txt"],
+        "kich_ban": ["kich-ban-tieng-nhat.txt", "kich-ban*.txt", "kichban*.txt", "script*.txt"],
+        "kich_ban_bo_qua": ["*theo-y*"],          # bản tách ý không dùng cho giọng đọc
+        "phu": ["units.json", "bando.txt", "kich-ban-theo-y.txt", "goi-san-xuat.md",
+                "*sound*effect*.md", "*storyboard*.md"],
     },
-    "files": {
-        "segments": "segments.txt",        # kịch bản tách theo ý, mỗi ý cách nhau 1 dòng trống
-        "voice_text": "voice/voice_text.txt",
-        "image_prompts": "image_prompts.txt",
-        "images_dir": "images",
-        "voice_audio": "voice/voice.mp3",
-        "sfx_cues": "sfx_cues.txt",
-        "music": "",                       # file nhạc nền, tùy chọn
-        "output_dir": "output",
-    },
+    "cho_toi_da_phut": 240,             # chờ file ở các bước làm tay
 }
 
+# Tên file cố định trong thư mục dự án
+F_PROMPT = "prompt-anh.txt"
+D_VOICE = "voice"
+F_KICH_BAN = "voice/kich-ban.txt"
+D_ANH = "anh"
+F_TIMELINE = "timeline.txt"
+F_VIDEO_ANH = "anh/video-anh.mp4"
+AUDIO_EXT = {".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg"}
 
-def _merge(base: dict, over: dict) -> dict:
+
+def _merge(base, over):
     out = dict(base)
     for k, v in over.items():
-        if isinstance(v, dict) and isinstance(out.get(k), dict):
-            out[k] = _merge(out[k], v)
-        else:
-            out[k] = v
+        out[k] = _merge(out[k], v) if isinstance(v, dict) and isinstance(out.get(k), dict) else v
     return out
 
 
 class Project:
-    def __init__(self, root, cfg: dict):
+    def __init__(self, root, cfg):
         self.root = Path(root).resolve()
         self.cfg = cfg
 
-    def path(self, key: str) -> Path:
-        value = self.cfg["files"][key]
-        return self.root / value if value else None
+    def p(self, rel) -> Path:
+        return self.root / rel
 
     @property
-    def out(self) -> Path:
-        d = self.path("output_dir")
-        d.mkdir(parents=True, exist_ok=True)
-        return d
+    def downloads(self) -> Path:
+        d = self.cfg.get("downloads")
+        return Path(d).expanduser() if d else Path.home() / "Downloads"
+
+    def voice_audio(self):
+        d = self.p(D_VOICE)
+        files = [f for f in d.glob("*") if f.suffix.lower() in AUDIO_EXT] if d.exists() else []
+        return max(files, key=lambda f: f.stat().st_mtime) if files else None
+
+    def srt(self):
+        d = self.p(D_VOICE)
+        files = list(d.glob("*.srt")) if d.exists() else []
+        return max(files, key=lambda f: f.stat().st_mtime) if files else None
 
     def save(self):
-        (self.root / "config.json").write_text(
-            json.dumps(self.cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+        (self.root / "config.json").write_text(json.dumps(self.cfg, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def load_project(root) -> Project:
     root = Path(root)
     cfg_path = root / "config.json"
-    user = {}
-    if cfg_path.exists():
-        user = json.loads(cfg_path.read_text(encoding="utf-8"))
+    user = json.loads(cfg_path.read_text(encoding="utf-8")) if cfg_path.exists() else {}
     return Project(root, _merge(DEFAULTS, user))
