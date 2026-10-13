@@ -1,0 +1,425 @@
+<title>Gà La Hét</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@400;600&display=swap">
+<style>
+/* Một màn hình game toàn khung: canvas phía sau, HUD và các lớp phủ nổi lên trên. Một thế giới duy nhất (bình minh đồng lúa), không đổi theo theme. */
+:root {
+  --sky-top: #ffd38a;
+  --sky-bot: #ffeccd;
+  --ink: #3b2412;
+  --rice: #6fae3a;
+  --dirt: #a8682f;
+  --comb: #e2382b;
+  --paper: #fff7e8;
+  --display: "Baloo 2", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--sky-bot); color: var(--ink); font-family: var(--body);
+  overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.app { position: relative; height: 100%; width: 100%; }
+canvas { display: block; width: 100%; height: 100%; }
+
+.hud {
+  position: absolute; inset: 0 0 auto 0; display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 12px; padding: 12px 16px; pointer-events: none;
+}
+.score { font-family: var(--display); font-weight: 800; font-size: 2rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.score small { display: block; font-family: var(--body); font-weight: 600; font-size: .75rem; letter-spacing: .06em; text-transform: uppercase; opacity: .7; margin-top: 4px; }
+.meter { display: flex; align-items: center; gap: 8px; font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.meter-bar { width: 96px; height: 12px; border-radius: 6px; background: rgba(59,36,18,.15); overflow: hidden; position: relative; }
+.meter-fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--rice); transition: width 60ms linear; }
+.meter-fill.loud { background: var(--comb); }
+.meter-mark { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); opacity: .5; }
+
+.overlay {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 16px;
+  background: rgba(255, 236, 205, .82); backdrop-filter: blur(3px);
+}
+.card { width: min(100%, 380px); display: grid; gap: 14px; text-align: center; }
+.card h1 { font-family: var(--display); font-weight: 800; font-size: clamp(2.6rem, 12vw, 3.6rem); line-height: .95; margin: 0; color: var(--comb); text-wrap: balance; transform: rotate(-3deg); }
+.card p { margin: 0; line-height: 1.5; }
+.rules { text-align: left; background: var(--paper); border: 2px solid var(--ink); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; font-size: .9rem; }
+.rules b { font-family: var(--display); font-size: 1rem; }
+button {
+  font: 800 1.15rem/1 var(--display); color: var(--ink); background: var(--paper);
+  border: 3px solid var(--ink); border-radius: 14px; padding: 14px 16px; cursor: pointer;
+  box-shadow: 0 4px 0 var(--ink); transition: transform 80ms, box-shadow 80ms;
+}
+button:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+button:focus-visible { outline: 3px solid var(--comb); outline-offset: 3px; }
+button.primary { background: var(--comb); color: var(--paper); }
+.note { font-size: .8rem; opacity: .75; }
+.big { font-family: var(--display); font-weight: 800; font-size: 3.4rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.quote { font-style: italic; }
+
+.pads { position: absolute; inset: auto 0 0 0; display: flex; gap: 12px; padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+.pad {
+  flex: 1; height: 92px; border-radius: 18px; border: 3px solid var(--ink); background: rgba(255,247,232,.85);
+  font: 800 1.3rem/1 var(--display); color: var(--ink); display: grid; place-items: center; box-shadow: 0 4px 0 var(--ink);
+}
+.pad.on { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); background: var(--sky-top); }
+@media (prefers-reduced-motion: reduce) { .card h1 { transform: none; } button, .pad { transition: none; } }
+</style>
+
+<div class="app" id="app">
+  <canvas id="cv" aria-label="Màn chơi Gà La Hét"></canvas>
+
+  <div class="hud">
+    <div class="score"><span id="score">0</span> m<small>Kỷ lục: <span id="best">0</span> m</small></div>
+    <div class="meter" id="meterWrap" hidden>
+      <span>Tiếng hét</span>
+      <div class="meter-bar"><div class="meter-fill" id="meter"></div><div class="meter-mark" id="markWalk"></div><div class="meter-mark" id="markJump"></div></div>
+    </div>
+  </div>
+
+  <div class="pads" id="pads" hidden>
+    <div class="pad" id="padWalk">Giữ để đi</div>
+    <div class="pad" id="padJump">Chạm để nhảy</div>
+  </div>
+
+  <div class="overlay" id="startScreen">
+    <div class="card">
+      <h1>Gà La Hét</h1>
+      <p>Con gà này chỉ chịu nhúc nhích khi bạn hét vào điện thoại.</p>
+      <div class="rules">
+        <div><b>Nói nhỏ:</b> gà đi bộ.</div>
+        <div><b>Hét to:</b> gà nhảy. Hét càng to, nhảy càng xa.</div>
+        <div><b>Im lặng:</b> gà đứng im. Rơi xuống hố là thua.</div>
+      </div>
+      <button class="primary" id="btnMic">Chơi bằng giọng</button>
+      <button id="btnTouch">Chơi bằng tay</button>
+      <p class="note" id="micNote">Cần cho phép dùng micro. Nếu micro bị chặn, hãy chọn chơi bằng tay.</p>
+    </div>
+  </div>
+
+  <div class="overlay" id="overScreen" hidden>
+    <div class="card">
+      <p>Gà đã đi được</p>
+      <div class="big"><span id="finalScore">0</span> m</div>
+      <p class="quote" id="deathLine"></p>
+      <button class="primary" id="btnAgain">Hét lại</button>
+      <button id="btnMenu">Đổi cách chơi</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const $ = id => document.getElementById(id);
+  let W = 0, H = 0;
+
+  function resize() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = cv.clientWidth; H = cv.clientHeight;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ---- Ngưỡng giọng ----
+  const WALK = 0.15, JUMP = 0.6;
+  $('markWalk').style.left = (WALK * 100) + '%';
+  $('markJump').style.left = (JUMP * 100) + '%';
+
+  // ---- Kỷ lục ----
+  let best = 0;
+  try { best = +localStorage.getItem('ga-la-het-best') || 0; } catch (e) {}
+  $('best').textContent = best;
+
+  // ---- Âm thanh ----
+  let audio = null, analyser = null, buf = null, micStream = null;
+  function ensureAudio() {
+    if (!audio) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) audio = new AC(); }
+    if (audio && audio.state === 'suspended') audio.resume();
+  }
+  function squawk() {
+    if (!audio || mode === 'mic') return;
+    const t = audio.currentTime, o = audio.createOscillator(), g = audio.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(700, t);
+    o.frequency.exponentialRampToValueAtTime(1300, t + 0.06);
+    o.frequency.exponentialRampToValueAtTime(500, t + 0.22);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.15, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+    o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 0.26);
+  }
+  async function startMic() {
+    ensureAudio();
+    if (!audio || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('no-mic');
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    const src = audio.createMediaStreamSource(micStream);
+    analyser = audio.createAnalyser(); analyser.fftSize = 1024;
+    buf = new Float32Array(analyser.fftSize);
+    src.connect(analyser);
+  }
+  function micLevel() {
+    if (!analyser) return 0;
+    analyser.getFloatTimeDomainData(buf);
+    let s = 0; for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
+    const db = 20 * Math.log10(Math.sqrt(s / buf.length) + 1e-8);
+    return Math.max(0, Math.min(1, (db + 55) / 45)); // -55 dB → 0, -10 dB → 1
+  }
+
+  // ---- Trạng thái game ----
+  let mode = null, running = false;
+  let segs, hen, camX, level, startX, deathLine, t0, jumpQueued = false, touchWalk = false;
+  const G = 1500, R = 16;
+
+  function reset() {
+    const base = H * 0.72;
+    segs = [{ x: -400, w: 900, y: base }];
+    while (segs[segs.length - 1].x < W * 3) addSeg();
+    hen = { x: 80, y: base, vx: 0, vy: 0, ground: true, face: 0, legs: 0, squash: 0 };
+    startX = hen.x; camX = 0; level = 0; t0 = performance.now();
+  }
+  function addSeg() {
+    const last = segs[segs.length - 1];
+    const dist = Math.max(0, (last.x + last.w - startX) / 40);
+    const hard = Math.min(1, dist / 400);
+    const gap = 50 + Math.random() * (50 + 90 * hard);
+    const w = 140 + Math.random() * (260 - 120 * hard);
+    let y = last.y + (Math.random() * 100 - 55);
+    y = Math.max(H * 0.5, Math.min(H * 0.82, y));
+    segs.push({ x: last.x + last.w + gap, w, y, tufts: Math.random() * 1000 });
+  }
+
+  function segAt(x) { return segs.find(s => x >= s.x && x <= s.x + s.w); }
+
+  function step(dt) {
+    if (mode === 'mic') {
+      const raw = micLevel();
+      level += (raw - level) * (raw > level ? 0.6 : 0.2);
+    } else {
+      level = touchWalk ? 0.4 : 0;
+      if (jumpQueued) level = 0.9;
+    }
+    const m = $('meter'); m.style.width = (level * 100) + '%'; m.classList.toggle('loud', level >= JUMP);
+
+    // Đi (trên không thì giữ đà lúc bật nhảy)
+    const speed = level > WALK ? 70 + 190 * Math.min(1, level) : 0;
+    hen.vx = hen.ground ? speed : Math.max(hen.vx, speed);
+    if (hen.vx > 0) {
+      const nx = hen.x + hen.vx * dt;
+      const wall = segs.find(s => nx + R * 0.6 > s.x && hen.x + R * 0.6 <= s.x + 1 && hen.y > s.y + 2);
+      hen.x = wall ? Math.min(nx, wall.x - R * 0.6) : nx;
+      hen.legs += dt * hen.vx * 0.08;
+    }
+    // Nhảy
+    if (hen.ground && level >= JUMP) {
+      hen.vy = -(420 + 320 * (Math.min(1, level) - JUMP) / (1 - JUMP));
+      hen.ground = false; hen.squash = 1; squawk();
+    }
+    jumpQueued = false;
+
+    // Rơi
+    const under = segAt(hen.x);
+    if (hen.ground && (!under || Math.abs(under.y - hen.y) > 1)) hen.ground = false;
+    if (!hen.ground) {
+      const py = hen.y;
+      hen.vy += G * dt; hen.y += hen.vy * dt;
+      const s = segAt(hen.x);
+      if (s && hen.vy >= 0 && py <= s.y + 1 && hen.y >= s.y) { hen.y = s.y; hen.vy = 0; hen.ground = true; hen.squash = -0.6; }
+    }
+    hen.squash *= Math.pow(0.002, dt);
+
+    camX += (hen.x - W * 0.32 - camX) * Math.min(1, dt * 6);
+    while (segs[segs.length - 1].x < camX + W * 2) addSeg();
+    while (segs.length > 3 && segs[0].x + segs[0].w < camX - W) segs.shift();
+
+    const score = Math.max(0, Math.floor((hen.x - startX) / 40));
+    $('score').textContent = score;
+    if (hen.y > H + 200) gameOver(score);
+  }
+
+  // ---- Vẽ ----
+  const hills = Array.from({ length: 12 }, (_, i) => ({ x: i * 260 + Math.random() * 80, h: 60 + Math.random() * 90 }));
+  const clouds = Array.from({ length: 6 }, (_, i) => ({ x: i * 340 + Math.random() * 120, y: 40 + Math.random() * 120, s: 0.7 + Math.random() * 0.6 }));
+
+  function draw(time) {
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#ffd38a'); sky.addColorStop(1, '#ffeccd');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+
+    // Mặt trời
+    ctx.fillStyle = 'rgba(255,170,80,.55)';
+    ctx.beginPath(); ctx.arc(W * 0.78, H * 0.28, Math.min(W, H) * 0.12, 0, Math.PI * 2); ctx.fill();
+
+    // Mây
+    ctx.fillStyle = 'rgba(255,255,255,.8)';
+    for (const c of clouds) {
+      const x = ((c.x - camX * 0.1) % (W + 400) + W + 400) % (W + 400) - 200;
+      ctx.beginPath();
+      ctx.ellipse(x, c.y, 50 * c.s, 18 * c.s, 0, 0, Math.PI * 2);
+      ctx.ellipse(x + 30 * c.s, c.y - 10 * c.s, 32 * c.s, 18 * c.s, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Đồi xa (núi đá vôi)
+    ctx.fillStyle = '#c9a77a';
+    const span = 12 * 260;
+    for (const h of hills) {
+      const x = ((h.x - camX * 0.3) % span + span) % span - 200;
+      ctx.beginPath();
+      ctx.moveTo(x - 90, H * 0.72);
+      ctx.quadraticCurveTo(x - 40, H * 0.72 - h.h * 1.4, x, H * 0.72 - h.h);
+      ctx.quadraticCurveTo(x + 40, H * 0.72 - h.h * 1.4, x + 90, H * 0.72);
+      ctx.fill();
+    }
+
+    // Đất và lúa
+    ctx.save(); ctx.translate(-camX, 0);
+    for (const s of segs) {
+      if (s.x > camX + W + 50 || s.x + s.w < camX - 50) continue;
+      ctx.fillStyle = '#a8682f'; ctx.fillRect(s.x, s.y, s.w, H - s.y + 10);
+      ctx.fillStyle = '#8c5424';
+      for (let i = 0; i < s.w; i += 28) ctx.fillRect(s.x + i + 6, s.y + 30 + ((i * 7) % 40), 8, 4);
+      ctx.fillStyle = '#6fae3a'; ctx.fillRect(s.x, s.y - 4, s.w, 14);
+      ctx.strokeStyle = '#4f8a24'; ctx.lineWidth = 2; ctx.beginPath();
+      for (let i = 6; i < s.w - 4; i += 11) {
+        const sway = Math.sin(time / 500 + i + (s.tufts || 0)) * 2;
+        ctx.moveTo(s.x + i, s.y - 2); ctx.lineTo(s.x + i + sway, s.y - 12 - ((i * 13) % 6));
+      }
+      ctx.stroke();
+    }
+    drawHen(time);
+    ctx.restore();
+  }
+
+  function drawHen(time) {
+    const { x, y } = hen;
+    const sq = hen.squash, sx = 1 - sq * 0.15, sy = 1 + sq * 0.2;
+    const screaming = level > WALK;
+    ctx.save();
+    ctx.translate(x, y);
+
+    // Chân
+    ctx.strokeStyle = '#e88a1a'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    const a = hen.ground ? Math.sin(hen.legs) * 6 : 3;
+    ctx.beginPath();
+    ctx.moveTo(-4, -10); ctx.lineTo(-4 + a, 0);
+    ctx.moveTo(5, -10); ctx.lineTo(5 - a, 0);
+    ctx.stroke();
+
+    ctx.scale(sx, sy);
+    const bob = hen.ground && screaming ? Math.abs(Math.sin(hen.legs)) * -2 : 0;
+    ctx.translate(0, bob);
+
+    // Thân
+    ctx.fillStyle = '#fffaf0'; ctx.strokeStyle = '#3b2412'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.ellipse(0, -24, 20, 16, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Đuôi
+    ctx.beginPath(); ctx.moveTo(-17, -30); ctx.lineTo(-28, -42); ctx.lineTo(-22, -26); ctx.closePath(); ctx.fill(); ctx.stroke();
+    // Cánh (vỗ khi nhảy)
+    const flap = hen.ground ? 0 : Math.sin(time / 40) * 0.6;
+    ctx.save(); ctx.translate(-2, -24); ctx.rotate(-0.3 + flap);
+    ctx.beginPath(); ctx.ellipse(0, 0, 10, 6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.restore();
+    // Mào
+    ctx.fillStyle = '#e2382b';
+    ctx.beginPath(); ctx.arc(12, -42, 4, 0, Math.PI * 2); ctx.arc(17, -41, 4, 0, Math.PI * 2); ctx.arc(8, -39, 3.5, 0, Math.PI * 2); ctx.fill();
+    // Mắt (mở to khi hét)
+    ctx.fillStyle = '#3b2412';
+    ctx.beginPath(); ctx.arc(14, -31, screaming ? 2.8 : 2, 0, Math.PI * 2); ctx.fill();
+    // Mỏ
+    const open = screaming ? 3 + level * 9 : 0;
+    ctx.fillStyle = '#f5a623';
+    ctx.beginPath(); ctx.moveTo(19, -28); ctx.lineTo(30, -26 - open * 0.4); ctx.lineTo(19, -24); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(19, -24); ctx.lineTo(28, -22 + open * 0.6); ctx.lineTo(19, -21); ctx.closePath(); ctx.fill();
+    // Yếm
+    ctx.fillStyle = '#e2382b';
+    ctx.beginPath(); ctx.ellipse(20, -18, 2.5, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+
+    // Bong bóng tiếng hét
+    if (screaming) {
+      const loud = level >= JUMP;
+      const txt = loud ? 'Ò Ó O' + 'O'.repeat(Math.round(level * 4)) + '!!' : 'cục... tác';
+      ctx.font = `800 ${Math.round(14 + level * 22)}px "Baloo 2", system-ui, sans-serif`;
+      ctx.fillStyle = loud ? '#e2382b' : '#3b2412';
+      ctx.textAlign = 'center';
+      const jit = loud ? (Math.random() - 0.5) * 4 : 0;
+      ctx.fillText(txt, x + 10 + jit, y - 58 + jit);
+    }
+  }
+
+  // ---- Vòng lặp ----
+  let last = 0;
+  function loop(t) {
+    const dt = Math.min(0.033, (t - last) / 1000 || 0); last = t;
+    if (running) step(dt);
+    if (segs) draw(t);
+    requestAnimationFrame(loop);
+  }
+
+  const lines = [
+    'Gà đã về với ông bà tổ tiên.',
+    'Lần sau hét to hơn nhé, hàng xóm chưa nghe thấy.',
+    'Gà rơi xuống hố. Hố không nói gì.',
+    'Đây là lý do gà không bay được.',
+    'Gà bảo: "Tại bạn hết đó."',
+    'Một bát cháo gà đang được chuẩn bị.',
+    'Gà nghỉ hưu sớm.',
+  ];
+  function gameOver(score) {
+    running = false;
+    if (score > best) {
+      best = score; $('best').textContent = best;
+      try { localStorage.setItem('ga-la-het-best', String(best)); } catch (e) {}
+      deathLine = 'Kỷ lục mới! Cả xóm đều nghe thấy bạn.';
+    } else deathLine = lines[Math.floor(Math.random() * lines.length)];
+    $('finalScore').textContent = score;
+    $('deathLine').textContent = deathLine;
+    $('pads').hidden = true;
+    $('overScreen').hidden = false;
+    $('btnAgain').focus();
+  }
+
+  function begin() {
+    reset();
+    $('startScreen').hidden = true; $('overScreen').hidden = true;
+    $('meterWrap').hidden = false;
+    $('pads').hidden = mode !== 'touch';
+    running = true;
+  }
+
+  $('btnMic').addEventListener('click', async () => {
+    try {
+      if (!analyser) await startMic();
+      mode = 'mic'; begin();
+    } catch (e) {
+      $('micNote').textContent = 'Micro bị chặn ở trang này. Hãy chọn "Chơi bằng tay", hoặc mở bản game tải về để chơi bằng giọng.';
+      $('micNote').style.color = '#e2382b';
+    }
+  });
+  $('btnTouch').addEventListener('click', () => { ensureAudio(); mode = 'touch'; begin(); });
+  $('btnAgain').addEventListener('click', () => { ensureAudio(); begin(); });
+  $('btnMenu').addEventListener('click', () => { $('overScreen').hidden = true; $('startScreen').hidden = false; $('pads').hidden = true; });
+
+  // Điều khiển cảm ứng
+  const padWalk = $('padWalk'), padJump = $('padJump');
+  const setWalk = on => { touchWalk = on; padWalk.classList.toggle('on', on); };
+  padWalk.addEventListener('pointerdown', e => { e.preventDefault(); padWalk.setPointerCapture?.(e.pointerId); setWalk(true); });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => padWalk.addEventListener(ev, () => setWalk(false)));
+  padJump.addEventListener('pointerdown', e => {
+    e.preventDefault(); jumpQueued = true; padJump.classList.add('on');
+    setTimeout(() => padJump.classList.remove('on'), 120);
+  });
+  // Bàn phím (máy tính): mũi tên phải để đi, phím cách để nhảy
+  window.addEventListener('keydown', e => {
+    if (mode !== 'touch' || !running) return;
+    if (e.key === 'ArrowRight') setWalk(true);
+    if (e.key === ' ' || e.key === 'ArrowUp') { jumpQueued = true; e.preventDefault(); }
+  });
+  window.addEventListener('keyup', e => { if (e.key === 'ArrowRight') setWalk(false); });
+
+  reset();
+  requestAnimationFrame(loop);
+})();
+</script>
