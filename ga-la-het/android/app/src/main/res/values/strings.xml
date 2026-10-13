@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Gà La Hét</string>
+    <string name="title_activity_main">Gà La Hét</string>
+    <string name="package_name">com.nghia.galahet</string>
+    <string name="custom_url_scheme">com.nghia.galahet</string>
+</resources>
